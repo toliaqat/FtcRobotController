@@ -126,6 +126,8 @@ public abstract class LumenBaseOpMode extends OpMode {
             armPower = Math.max(previousArmPower + ARM_POWER_STEP, 1.0);
         } else if (gamepad1.left_trigger > 0) {
             armPower = Math.min(previousArmPower - ARM_POWER_STEP, 0.0);
+        } else {
+            armPower = 0;
         }
         previousArmPower = armPower;
         // Apply power to the arm motor
