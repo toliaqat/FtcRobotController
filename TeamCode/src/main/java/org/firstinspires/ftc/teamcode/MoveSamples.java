@@ -2,8 +2,8 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
-@Autonomous(name = "Parking AutoMode", group = "Autonomous")
-public class AutoModeParking extends LumenBaseLinearOpMode {
+@Autonomous(name = "Move Sample", group = "Autonomous")
+public class MoveSamples extends LumenBaseLinearOpMode {
 
     @Override
     public void runOpMode() {
