@@ -21,5 +21,4 @@ public class AutoParking extends LumenBaseLinearOpMode {
         forward(600);
         stop();
     }
-
 }

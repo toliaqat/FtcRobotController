@@ -21,36 +21,4 @@ public class MoveSamples extends LumenBaseLinearOpMode {
         forward(600);
         stop();
     }
-
-    public void left(int duration) {
-        frontLeftMotor.setPower(-1);
-        frontRightMotor.setPower(-1);
-        backLeftMotor.setPower(1);
-        backRightMotor.setPower(1);
-        sleep(duration);
-    }
-
-    public void right(int duration) {
-        frontLeftMotor.setPower(1);
-        frontRightMotor.setPower(1);
-        backLeftMotor.setPower(-1);
-        backRightMotor.setPower(-1);
-        sleep(duration);
-    }
-
-    public void forward(int duration) {
-        frontLeftMotor.setPower(-1);
-        frontRightMotor.setPower(1);
-        backLeftMotor.setPower(-1);
-        backRightMotor.setPower(1);
-        sleep(duration);
-    }
-
-    public void backward(int duration) {
-        frontLeftMotor.setPower(1);
-        frontRightMotor.setPower(-1);
-        backLeftMotor.setPower(1);
-        backRightMotor.setPower(-1);
-        sleep(duration);
-    }
 }

@@ -7,6 +7,9 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
+/**
+ * Base class for automode.
+ */
 public abstract class LumenBaseLinearOpMode extends LinearOpMode {
     // Drive motors
     protected DcMotor frontLeftMotor;
