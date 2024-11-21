@@ -1,13 +1,16 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.Range;
 
-@TeleOp(name = "AleenaManal", group = "Iterative Opmode")
-public class AleenaManal extends OpMode {
+@TeleOp(name = "Mecanum Robot TeleOp 5", group = "Iterative Opmode")
+public class AleenaManaal extends OpMode {
 
     // Drive motors
     private DcMotor frontLeftMotor;
@@ -16,7 +19,7 @@ public class AleenaManal extends OpMode {
     private DcMotor backRightMotor;
 
     // Arm motor
-    private DcMotor armMotor;
+    private DcMotorEx armMotor;
 
     // Wrist moto
     private DcMotor wristMotor;
@@ -36,6 +39,19 @@ public class AleenaManal extends OpMode {
     private double previousError = 0;
     private double previousTime = 0;  // Used to calculate deltaTime for derivative
 
+    protected double previousArmPower = 0.0d;
+    protected static final double ARM_POWER_STEP = 0.1;
+
+    private static final double ARM_MAX_POWER = 1.0;  // Maximum motor power
+    private static final double ARM_MIN_POWER = -1.0; // Minimum motor power
+    private static final double ARM_POWER_INCREMENT = 0.01; // Step size for ramping power
+    private double armCurrentPower = 0.0; // Current motor power
+
+
+    private static final double WRIST_MAX_POWER = 1.0;  // Maximum motor power
+    private static final double WRIST_MIN_POWER = -1.0; // Minimum motor power
+    private static final double WRIST_POWER_INCREMENT = 0.01; // Step size for ramping power
+    private double wristCurrentPower = 0.0; // Current motor power
 
     @Override
     public void init() {
@@ -52,11 +68,14 @@ public class AleenaManal extends OpMode {
         driveMecanum();
 
         // Handle arm movement
-        controlArm();
+        // controlArm();
 
         //Handle wrist movement
 
-        controlWrist();
+        // controlWrist();
+
+        // Automation Arm / Wrist
+        controlArmWrist();
 
         // Handle claw operation
         controlClaw();
@@ -65,7 +84,7 @@ public class AleenaManal extends OpMode {
         controlIntake();
 
         // Update telemetry data
-        telemetry.update();
+        //telemetry.update();
     }
 
     /**
@@ -79,9 +98,15 @@ public class AleenaManal extends OpMode {
         backRightMotor = hardwareMap.get(DcMotor.class, "backRight");
 
         // Initialize arm motor
-        armMotor = hardwareMap.get(DcMotor.class, "arm");
+        armMotor = hardwareMap.get(DcMotorEx.class, "arm");
+        armMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        armMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        armMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         wristMotor = hardwareMap.get(DcMotor.class, "wrist");
+        wristMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        wristMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        wristMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // Initialize servos
         clawServo = hardwareMap.get(Servo.class, "claw");
@@ -97,10 +122,12 @@ public class AleenaManal extends OpMode {
         stopAllMotors();
 
         // Set motors to run without encoders
-        setMotorModes(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        setMotorModes(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // Set initial servo positions
-        clawServo.setPosition(0.5);   // Neutral position
+        double clawPosition = 0.4;
+        clawServo.setPosition(clawPosition);   // Neutral position
+        telemetry.addData("initial clawPosition:", clawPosition);
         intakeServo.setPosition(0.5); // Neutral position
     }
 
@@ -156,83 +183,110 @@ public class AleenaManal extends OpMode {
         telemetry.addData("Back Left Power", backLeftPower);
         telemetry.addData("Front Right Power", frontRightPower);
         telemetry.addData("Back Right Power", backRightPower);
+
     }
 
-    private void controlArm() {
-        // Get the current position of the arm from the encoder
-        double currentArmPosition = armMotor.getCurrentPosition();  // Example function to get the encoder position
+    /**
+     * Automate the arm and write movement to preset locations
+     */
+    protected void controlArmWrist() {
+        telemetry.addData("arm motor position", armMotor.getCurrentPosition());
+        telemetry.addData("wrist motor position", wristMotor.getCurrentPosition());
+        armMotor.setTargetPosition(-3363);
+        // wristMotor.setTargetPosition(330);
+        armMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        // wristMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        PIDFCoefficients newPIDF = new PIDFCoefficients(15.0, 0.0, 5.0, 10.0); // Example updated values
+        armMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_TO_POSITION, newPIDF);
 
-        // --- Using the triggers to set the target position ---
-        double armUp = gamepad1.right_trigger;  // Value between 0 and 1
-        double armDown = gamepad1.left_trigger; // Value between 0 and 1
+        armMotor.setVelocity(-100);
+        //armMotor.setPower(-1.0);
 
-        // Set target position based on the triggers
-        targetArmPosition = (armUp - armDown) * 1000; // Adjust the multiplier as needed
+        PIDFCoefficients currentPIDF = armMotor.getPIDFCoefficients(DcMotor.RunMode.RUN_TO_POSITION);
 
-        // Calculate the error
-        double error = targetArmPosition - currentArmPosition;
+        //wristMotor.setPower(0.01);
 
-        // If the error is within the deadband, stop applying power
-        if (Math.abs(error) < errorThreshold) {
-            armMotor.setPower(0);  // Don't move if we're within the acceptable range
-            return;  // Exit the loop early, no need to continue with PID adjustments
+        while (armMotor.isBusy()) {
+            telemetry.addData("arm motor position", armMotor.getCurrentPosition());
+            telemetry.addData("wrist motor position", wristMotor.getCurrentPosition());
+            telemetry.addData("Current PIDF", "P: %.2f, I: %.2f, D: %.2f, F: %.2f",
+                    currentPIDF.p, currentPIDF.i, currentPIDF.d, currentPIDF.f);
+            telemetry.update();
         }
 
-        // PID control
-        double integral = 0;
-        double previousError = 0;
-        double currentTime = System.nanoTime() / 1_000_000_000.0; // Time in seconds
-        double deltaTime = currentTime - previousTime;
-        previousTime = currentTime;
+        armMotor.setVelocity(0);
+        //armMotor.setPower(0);
+        // wristMotor.setPower(0);
+        armMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        // wristMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        telemetry.addData("Exiting controlArmWrist ######", "Test");
+    }
 
-        integral += error * deltaTime;
-        double derivative = (error - previousError) / deltaTime;
+    /**
+     * Controls the arm movement using the triggers
+     */
+    protected void controlArm() {
+        // Calculate arm power from triggers
+        //ARM UP
+        if (gamepad1.right_trigger > 0) {
+            // armPower = Math.min(previousArmPower + ARM_POWER_STEP, 1.0);
+            if (armCurrentPower < ARM_MAX_POWER) {
+                armCurrentPower += ARM_POWER_INCREMENT;
+            }
+        } else if (gamepad1.left_trigger > 0) {
+            if (armCurrentPower > ARM_MIN_POWER) {
+                armCurrentPower -= ARM_POWER_INCREMENT;
+            }
+            //armPower = Math.max(previousArmPower - ARM_POWER_STEP, 0.0);
+        } else {
+            armCurrentPower = 0;
+        }
 
-        double pidOutput = (kP * error) + (kI * integral) + (kD * derivative);
-
-        // Limit the motor power to the range [-1, 1]
-        double armPower = Range.clip(pidOutput, -1.0, 1.0);
-
-        // Apply the power to the motor
-        armMotor.setPower(armPower);
-
+        // Apply power to the arm motor
+        armMotor.setPower(armCurrentPower);
         // Telemetry for debugging
-        telemetry.addData("Target Arm Position", targetArmPosition);
-        telemetry.addData("Current Arm Position", currentArmPosition);
-        telemetry.addData("Error", error);
-        telemetry.addData("PID Output", pidOutput);
-        telemetry.addData("Arm Power", armPower);
+        telemetry.addData("Arm Power", armCurrentPower);
     }
 
     /**
      * Controls the arm movement using the triggers
      */
     private void controlWrist() {
-        double wristPower = 0;
 
         // Control wrist motor with left bumper and right bumper
         if (gamepad1.right_bumper) {
-            wristPower = 1.0; // Move wrist up
+
+            if (wristCurrentPower < WRIST_MAX_POWER) {
+                wristCurrentPower += WRIST_POWER_INCREMENT;
+            }
         } else if (gamepad1.left_bumper) {
-            wristPower = -1.0; // Move wrist down
+            if (wristCurrentPower > WRIST_MIN_POWER) {
+                wristCurrentPower -= WRIST_POWER_INCREMENT;
+            }
+        } else {
+            wristCurrentPower = 0;
         }
 
-        wristMotor.setPower(wristPower);
-        telemetry.addData("Wrist Power", wristPower);
+        wristMotor.setPower(wristCurrentPower);
+        telemetry.addData("Wrist Power", wristCurrentPower);
     }
 
     /**
      * Controls the claw using buttons
      */
     private void controlClaw() {
-        if (gamepad1.a) {
-            // Open claw
-            clawServo.setPosition(1.0);
-            telemetry.addData("Claw", "Opened");
-        } else if (gamepad1.b) {
+        double clawPosition = 0;
+        if (gamepad1.b) {
             // Close claw
-            clawServo.setPosition(0.0);
-            telemetry.addData("Claw", "Closed");
+            clawPosition = 0.42;
+            clawServo.setPosition(clawPosition);
+            telemetry.addData("Claw", "Close");
+            telemetry.addData("close clawPosition:", clawPosition);
+        } else if (gamepad1.a) {
+            // Open claw
+            clawPosition = 0.30;
+            clawServo.setPosition(clawPosition);
+            telemetry.addData("open clawPosition", clawPosition);
         }
     }
 
