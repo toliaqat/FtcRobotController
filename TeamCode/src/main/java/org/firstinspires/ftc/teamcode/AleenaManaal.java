@@ -43,10 +43,11 @@ public class AleenaManaal extends LinearOpMode {
     private static final double WRIST_POWER_INCREMENT = 0.01; // Step size for ramping power
     private double wristCurrentPower = 0.0; // Current motor power
 
-    private static final int ARM_DEFAULT_POSITION = -200;
-    private static final int ARM_POSITION_SPECIMEN_HIGH_BAR = -2000;
-    private static final int ARM_POSITION_LOWER_BASKET = -2263;
-    private static final int ARM_POSITION_UPPER_BASKET = -3503;
+    private static final int ARM_DEFAULT_POSITION = -165;
+    private static final int ARM_POSITION_SPECIMEN_UP = -1460;
+    private static final int ARM_POSITION_SPECIMEN_DOWN = -900;
+    private static final int ARM_POSITION_LOWER_BASKET = -1463;
+    private static final int ARM_POSITION_UPPER_BASKET = -2303;
     private static final int ARM_POSITION_SUBMERSIBLE_1 = -500;
     private static final int ARM_POSITION_SUBMERSIBLE_2 = -400;
     private static final int WRIST_POSITION_UPPER_BASKET = 350;
@@ -187,7 +188,7 @@ public class AleenaManaal extends LinearOpMode {
         // Retrieve joystick values
         double y = -gamepad1.left_stick_y; // Forward/backward (inverted)
         double x = gamepad1.left_stick_x * 1.1; // Strafing (adjusted for imperfect strafing)
-        double rotation = gamepad1.right_stick_x; // Rotation
+        double rotation = -gamepad1.right_stick_x; // Rotation
 
         double slowDownFactor = 0.6; // Factor to slow down robot movements
 
@@ -264,7 +265,10 @@ public class AleenaManaal extends LinearOpMode {
             moveAmrWrist(ARM_POSITION_SUBMERSIBLE_1, WRIST_POSITION_SUBMERSIBLE_2);
             moveAmrWrist(ARM_POSITION_SUBMERSIBLE_2, WRIST_POSITION_SUBMERSIBLE_2);
         } else if (gamepad1.back) {
-            moveAmrWrist(ARM_POSITION_SPECIMEN_HIGH_BAR, 0);
+            moveAmrWrist(ARM_POSITION_SPECIMEN_UP, 0);
+        } else if (gamepad1.start) {
+            moveAmrWrist(ARM_POSITION_SPECIMEN_DOWN, 0);
+            controlClawHelper(true);
         } else if (gamepad1.dpad_left) {
             // Reach to base position
             moveAmrWrist(0, 0);
@@ -293,6 +297,7 @@ public class AleenaManaal extends LinearOpMode {
             telemetry.update();
         }
         armMotor.setVelocity(0);
+        controlClawHelper(true);
         telemetry.update();
     }
 
@@ -391,12 +396,24 @@ public class AleenaManaal extends LinearOpMode {
     private void controlClaw() {
         double clawPosition = 0;
         if (gamepad1.b) {
+            // close claw
+            controlClawHelper(false);
+        } else if (gamepad1.a) {
+            // open claw
+            controlClawHelper(true);
+        }
+        telemetry.update();
+    }
+
+    private void controlClawHelper(boolean open) {
+        double clawPosition = 0;
+        if (!open) {
             // Close claw
             clawPosition = 0.42;
             clawServo.setPosition(clawPosition);
             telemetry.addData("Claw", "Close");
             telemetry.addData("close clawPosition:", clawPosition);
-        } else if (gamepad1.a) {
+        } else {
             // Open claw
             clawPosition = 0.30;
             clawServo.setPosition(clawPosition);
